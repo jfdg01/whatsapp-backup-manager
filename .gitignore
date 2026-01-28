@@ -1,0 +1,15 @@
+venv
+data
+.vscode
+html
+
+WhatsApp
+wa-crypt-tools
+__pycache__
+
+*.db
+*.vcf
+
+output
+
+*.apk
