@@ -28,6 +28,9 @@ def main() -> None:
     parser.add_argument(
         "--key", "-k", help="Decryption key (64 hex)"
     )
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Simulate actions without executing them"
+    )
 
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -58,8 +61,14 @@ def main() -> None:
     )
 
     # All / Orchestrator
-    subparsers.add_parser(
-        "all", help="Run full pull->decrypt->convert workflow"
+    p_all = subparsers.add_parser(
+        "all", help="Run full pull->decrypt->convert->push workflow"
+    )
+    p_all.add_argument(
+        "--pull-device", help="Device ID specifically for pulling"
+    )
+    p_all.add_argument(
+        "--push-device", help="Device ID specifically for pushing"
     )
 
     args = parser.parse_args()
@@ -67,6 +76,21 @@ def main() -> None:
     # Load Config
     config = load_config(args.config)
     merge_args_with_config(args, config)
+
+    # Sync resolved CLI overrides back to Config for subcommands that use it
+    config['output'] = args.output
+    if hasattr(args, 'input'):
+        config['input'] = args.input
+    if hasattr(args, 'key'):
+        config['key'] = args.key
+    if hasattr(args, 'device'):
+        config['device'] = args.device
+    if hasattr(args, 'pull_device'):
+        config['pull_device'] = args.pull_device
+    if hasattr(args, 'push_device'):
+        config['push_device'] = args.push_device
+    if hasattr(args, 'dry_run'):
+        config['dry_run'] = args.dry_run
 
     # Dispatch
     if args.command == "pull":
@@ -91,7 +115,11 @@ def main() -> None:
             config.get('device')
         )
 
-        success = push_whatsapp(input_path, device_id)
+        success = push_whatsapp(
+            input_path,
+            device_id,
+            dry_run=config.get('dry_run', False)
+        )
         sys.exit(0 if success else 1)
 
     elif args.command == "decrypt":

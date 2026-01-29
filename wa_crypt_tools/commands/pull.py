@@ -15,6 +15,8 @@ def pull_data(config: Config, device_id: Optional[str] = None) -> int:
     """
     print("--- WhatsApp Full Folder Puller (Python) ---")
 
+    dry_run = config.get('dry_run', False)
+
     # Resolving Output Directory
     # config['output'] should already be resolved by merge_args_with_config
     local_dest_base = config.get('output')
@@ -29,6 +31,10 @@ def pull_data(config: Config, device_id: Optional[str] = None) -> int:
         device_id or config.get('pull_device') or config.get('device')
     )
     adb_base = get_adb_base(target_device)
+    
+    # Normalize paths for display
+    local_dest_base = os.path.abspath(local_dest_base)
+    dest_dir = os.path.normpath(os.path.join(local_dest_base, "WhatsApp"))
 
     print(f"Output Directory: {local_dest_base}")
     if target_device:
@@ -47,7 +53,10 @@ def pull_data(config: Config, device_id: Optional[str] = None) -> int:
               "Aborting to prevent overwrite.")
         return 1
 
-    os.makedirs(os.path.join(dest_dir, "Databases"), exist_ok=True)
+    if dry_run:
+        print(f"[DRY-RUN] Would create directory: {os.path.join(dest_dir, 'Databases')}")
+    else:
+        os.makedirs(os.path.join(dest_dir, "Databases"), exist_ok=True)
 
     # 2. Pull Contacts
     print("[2/5] Checking for contacts.vcf...")
@@ -65,17 +74,21 @@ def pull_data(config: Config, device_id: Optional[str] = None) -> int:
 
     if found_contact:
         print(f"Found contacts at: {found_contact}")
-        try:
-            subprocess.check_call(
-                adb_base + [
-                    "pull",
-                    found_contact,
-                    os.path.join(local_dest_base, "contacts.vcf")
-                ]
-            )
-            print("Contacts pulled successfully.")
-        except subprocess.CalledProcessError:
-            print("Error pulling contacts.")
+        dest_contact = os.path.join(local_dest_base, "contacts.vcf")
+        if dry_run:
+            print(f"[DRY-RUN] Would pull {found_contact} to {dest_contact}")
+        else:
+            try:
+                subprocess.check_call(
+                    adb_base + [
+                        "pull",
+                        found_contact,
+                        dest_contact
+                    ]
+                )
+                print("Contacts pulled successfully.")
+            except subprocess.CalledProcessError:
+                print("Error pulling contacts.")
     else:
         print("Warning: contacts.vcf not found in standard paths.")
         print("   To include contacts, export them to .vcf "
@@ -96,66 +109,80 @@ def pull_data(config: Config, device_id: Optional[str] = None) -> int:
 
     # msgstore
     target_msgstore = "msgstore.db.crypt15"
-    try:
-        subprocess.check_call(
-            adb_base + [
-                "pull",
-                f"{base_path}/Databases/{target_msgstore}",
-                os.path.join(dest_dir, "Databases/")
-            ],
-            stderr=subprocess.DEVNULL
-        )
-        print(f"Pulled {target_msgstore}")
-    except subprocess.CalledProcessError:
-        print(f"Warning: {target_msgstore} not found in Databases.")
-
-    # wa.db
-    target_wadb = "wa.db.crypt15"
-    # Try Databases folder first
-    try:
-        subprocess.check_call(
-            adb_base + [
-                "pull",
-                f"{base_path}/Databases/{target_wadb}",
-                os.path.join(dest_dir, "Databases/")
-            ],
-            stderr=subprocess.DEVNULL
-        )
-        print(f"Pulled {target_wadb}")
-    except subprocess.CalledProcessError:
-        # Try Backups folder if not in Databases
-        # (sometimes it's there per user)
+    target_msgstore_dest = os.path.join(dest_dir, "Databases")
+    if dry_run:
+        print(f"[DRY-RUN] Would pull {base_path}/Databases/{target_msgstore} to {target_msgstore_dest}/")
+    else:
         try:
             subprocess.check_call(
                 adb_base + [
                     "pull",
-                    f"{base_path}/Backups/{target_wadb}",
+                    f"{base_path}/Databases/{target_msgstore}",
                     os.path.join(dest_dir, "Databases/")
                 ],
                 stderr=subprocess.DEVNULL
             )
-            print(f"Pulled {target_wadb} (from Backups)")
+            print(f"Pulled {target_msgstore}")
         except subprocess.CalledProcessError:
-            print(f"Warning: {target_wadb} not found in Databases or Backups.")
+            print(f"Warning: {target_msgstore} not found in Databases.")
+
+    # wa.db
+    target_wadb = "wa.db.crypt15"
+    wadb_dest = os.path.join(dest_dir, "Databases")
+    if dry_run:
+        print(f"[DRY-RUN] Would pull {target_wadb} from Databases or Backups to {wadb_dest}/")
+    else:
+        # Try Databases folder first
+        try:
+            subprocess.check_call(
+                adb_base + [
+                    "pull",
+                    f"{base_path}/Databases/{target_wadb}",
+                    os.path.join(dest_dir, "Databases/")
+                ],
+                stderr=subprocess.DEVNULL
+            )
+            print(f"Pulled {target_wadb}")
+        except subprocess.CalledProcessError:
+            # Try Backups folder if not in Databases
+            # (sometimes it's there per user)
+            try:
+                subprocess.check_call(
+                    adb_base + [
+                        "pull",
+                        f"{base_path}/Backups/{target_wadb}",
+                        os.path.join(dest_dir, "Databases/")
+                    ],
+                    stderr=subprocess.DEVNULL
+                )
+                print(f"Pulled {target_wadb} (from Backups)")
+            except subprocess.CalledProcessError:
+                print(f"Warning: {target_wadb} not found in Databases or Backups.")
 
     # 5. Pull Backups
     print("[5/6] Pulling Backups folder...")
-    try:
-        subprocess.check_call(
-            adb_base + ["pull", f"{base_path}/Backups", dest_dir]
-        )
-    except subprocess.CalledProcessError:
-        print("Warning: Failed to pull Backups folder.")
+    if dry_run:
+        print(f"[DRY-RUN] Would pull {base_path}/Backups to {dest_dir}")
+    else:
+        try:
+            subprocess.check_call(
+                adb_base + ["pull", f"{base_path}/Backups", dest_dir]
+            )
+        except subprocess.CalledProcessError:
+            print("Warning: Failed to pull Backups folder.")
 
     # 6. Pull Media
     print("[6/6] Pulling Media folder...")
     media_path = f"{base_path}/Media"
-    try:
-        subprocess.check_call(
-            adb_base + ["pull", media_path, dest_dir]
-        )
-    except subprocess.CalledProcessError:
-        print("Warning: Failed to pull Media folder.")
+    if dry_run:
+        print(f"[DRY-RUN] Would pull {media_path} to {dest_dir}")
+    else:
+        try:
+            subprocess.check_call(
+                adb_base + ["pull", media_path, dest_dir]
+            )
+        except subprocess.CalledProcessError:
+            print("Warning: Failed to pull Media folder.")
 
     print("----------------------------")
     print(f"Success! WhatsApp data pulled to: {dest_dir}")
@@ -184,6 +211,7 @@ if __name__ == "__main__":
     parser.add_argument("--output", "-o", help="Base download directory")
     parser.add_argument("--device", "-d", help="Device ID")
     parser.add_argument("--config", "-c", help="Config file path")
+    parser.add_argument("--dry-run", action="store_true")
 
     args = parser.parse_args()
 

@@ -12,6 +12,7 @@ class Config(TypedDict, total=False):
     device: Optional[str]
     pull_device: Optional[str]
     push_device: Optional[str]
+    dry_run: Optional[bool]
 
 
 CONFIG_FILENAME = "config.json"
@@ -109,3 +110,7 @@ def merge_args_with_config(args: argparse.Namespace, config: Config) -> None:
 
     if hasattr(args, 'push_device') and args.push_device is None:
         args.push_device = config.get('push_device')
+
+    # 6. Resolve 'dry_run'
+    if hasattr(args, 'dry_run') and args.dry_run is None:
+        args.dry_run = config.get('dry_run', False)

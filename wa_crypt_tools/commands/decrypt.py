@@ -20,6 +20,8 @@ def decrypt_database(
     """
     print("--- WhatsApp Database Decrypter (Python) ---")
 
+    dry_run = config.get('dry_run', False)
+
     # Resolve Key
     key_hex = key or config.get('key')
     if not key_hex:
@@ -52,12 +54,16 @@ def decrypt_database(
     msgstore_out = os.path.join(input_dir_base, "msgstore.db")
 
     if not os.path.exists(msgstore_crypt):
-        print(f"Warning: Main database not found at {msgstore_crypt}")
+        if not dry_run:
+            print(f"Warning: Main database not found at {msgstore_crypt}")
     else:
         print(f"Found msgstore: {msgstore_crypt}")
 
     # Setup Venv
-    ensure_venv()
+    if dry_run:
+        print("[DRY-RUN] Would ensure virtual environment existence.")
+    else:
+        ensure_venv()
 
     # Decrypt
     # Prepare decryptor path
@@ -70,11 +76,14 @@ def decrypt_database(
             return
 
         print(f"Decrypting {name}...")
-        try:
-            subprocess.check_call([wadecrypt_path, key_hex, input_f, output_f])
-            print(f"Success! {name} decrypted to: {output_f}")
-        except subprocess.CalledProcessError:
-            print(f"Error: Failed to decrypt {name}.")
+        if dry_run:
+            print(f"[DRY-RUN] Would run: {wadecrypt_path} <KEY> {input_f} {output_f}")
+        else:
+            try:
+                subprocess.check_call([wadecrypt_path, key_hex, input_f, output_f])
+                print(f"Success! {name} decrypted to: {output_f}")
+            except subprocess.CalledProcessError:
+                print(f"Error: Failed to decrypt {name}.")
 
     # Run decryptions
     perform_decrypt(msgstore_crypt, msgstore_out, "msgstore.db")
@@ -96,7 +105,8 @@ def decrypt_database(
         wadb_out = os.path.join(input_dir_base, "wa.db")
         perform_decrypt(wadb_crypt, wadb_out, "wa.db")
     else:
-        print("wa.db.crypt15 not found. Skipping wa.db decryption.")
+        if not dry_run:
+            print("wa.db.crypt15 not found. Skipping wa.db decryption.")
 
     return 0
 
@@ -128,6 +138,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--input", "-i", help="Base input directory")
     parser.add_argument("--config", "-c", help="Config file path")
+    parser.add_argument("--dry-run", action="store_true")
 
     args = parser.parse_args()
 

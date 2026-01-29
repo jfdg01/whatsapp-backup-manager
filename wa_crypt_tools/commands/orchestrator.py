@@ -2,10 +2,12 @@ import os
 import argparse
 import sys
 
+from pathlib import Path
 from wa_crypt_tools.config import Config, load_config
 from wa_crypt_tools.commands.pull import pull_data
 from wa_crypt_tools.commands.decrypt import decrypt_database
 from wa_crypt_tools.commands.convert import convert_vcf
+from wa_crypt_tools.commands.push import push_whatsapp
 
 
 def run_orchestrator(config: Config) -> int:
@@ -46,13 +48,32 @@ def run_orchestrator(config: Config) -> int:
     contacts_vcf = os.path.join(output_dir, "contacts.vcf")
     contacts_json = os.path.join(output_dir, "contacts.json")
 
-    if os.path.exists(contacts_vcf):
-        if convert_vcf(contacts_vcf, contacts_json) != 0:
-            print("Orchestrator warning: Contact conversion failed.")
+    dry_run = config.get('dry_run', False)
+
+    vcf_exists = os.path.exists(contacts_vcf)
+    if vcf_exists or dry_run:
+        if dry_run and not vcf_exists:
+            print(f"[DRY-RUN] Simulating conversion of {contacts_vcf} to {contacts_json}")
+            # We don't actually call convert_vcf here to avoid its own logic,
+            # but we could. For now, just print.
         else:
-            print("Contacts converted successfully.")
+            if convert_vcf(contacts_vcf, contacts_json, dry_run=dry_run) != 0:
+                print("Orchestrator warning: Contact conversion failed.")
+            else:
+                print("Contacts converted successfully.")
     else:
         print("No contacts.vcf found to convert.")
+
+    # 4. Push
+    print("\n>>> Step 4: Push (Restore)")
+    # Push device priority: push_device -> global device -> None
+    device_id = config.get('push_device') or config.get('device')
+    
+    # We push from the output directory (which contains 'WhatsApp')
+    if not push_whatsapp(Path(output_dir), device_id, dry_run=dry_run):
+        print("Orchestrator warning: Push failed.")
+    else:
+        print("Push completed successfully.")
 
     print("\n=== Orchestrator Complete ===")
     return 0
@@ -76,6 +97,12 @@ def run(args: argparse.Namespace) -> int:
         config['device'] = args.device
     if hasattr(args, 'key'):
         config['key'] = args.key
+    if hasattr(args, 'pull_device'):
+        config['pull_device'] = args.pull_device
+    if hasattr(args, 'push_device'):
+        config['push_device'] = args.push_device
+    if hasattr(args, 'dry_run'):
+        config['dry_run'] = args.dry_run
 
     # We also need to load from file if specified
     file_config = load_config(getattr(args, 'config', None))
@@ -92,8 +119,11 @@ if __name__ == "__main__":
     )
     parser.add_argument("--output", "-o", help="Output directory")
     parser.add_argument("--device", "-d", help="Device ID")
+    parser.add_argument("--pull-device", help="Source device ID for pull")
+    parser.add_argument("--push-device", help="Destination device ID for push")
     parser.add_argument("--key", "-k", help="Decryption key (64 hex)")
     parser.add_argument("--config", "-c", help="Config file path")
+    parser.add_argument("--dry-run", action="store_true")
 
     args = parser.parse_args()
     sys.exit(run(args))

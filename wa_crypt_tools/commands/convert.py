@@ -88,7 +88,7 @@ def _internal_convert_logic(input_path: str, output_path: str) -> None:
     print(f"Successfully converted to {output_path}")
 
 
-def convert_vcf(input_path: str, output_path: str) -> int:
+def convert_vcf(input_path: str, output_path: str, dry_run: bool = False) -> int:
     """
     Converts contacts.vcf to contacts.json using the venv.
     Returns exit code (0 for success, 1 for failure).
@@ -98,6 +98,10 @@ def convert_vcf(input_path: str, output_path: str) -> int:
     if not os.path.exists(input_path):
         print(f"Error: Input file {input_path} not found.")
         return 1
+
+    if dry_run:
+        print(f"[DRY-RUN] Would convert {input_path} to {output_path}")
+        return 0
 
     # Ensure venv exists and has vobject
     ensure_venv()
@@ -131,6 +135,7 @@ def main() -> None:
     )
     parser.add_argument("--input", "-i", required=True)
     parser.add_argument("--output", "-o", required=True)
+    parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
 
     if args.internal:
@@ -144,7 +149,7 @@ def main() -> None:
             sys.exit(1)
     else:
         # Standard CLI usage of this module directly
-        sys.exit(convert_vcf(args.input, args.output))
+        sys.exit(convert_vcf(args.input, args.output, dry_run=args.dry_run))
 
 
 if __name__ == "__main__":
