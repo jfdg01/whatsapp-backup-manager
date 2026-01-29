@@ -1,2 +1,27 @@
 ## Codebase Patterns
-- None yet.
+- Use `wa-crypt-tools` venv: `./wa-crypt-tools/bin/python`
+- Run tools via module: `python -m flake8`, `python -m mypy`
+- Package calls: `python -m wa_crypt_tools`
+
+## 2026-01-29 - US-001
+- Implemented `wa_crypt_tools` package structure.
+- Created `pyproject.toml` with `flake8` and `mypy` config.
+- Created empty modules: `adb`, `config`, `crypto`, `utils`.
+- Verified with `mypy` and `flake8`.
+- Files changed: `pyproject.toml`, `wa_crypt_tools/*`
+- **Learnings for future iterations:**
+  - The project uses a local venv named `wa-crypt-tools` (hyphen) but the package is `wa_crypt_tools` (underscore).
+  - `flake8` and `mypy` were not installed; added them to the venv.
+  - Future modules should be added to `wa_crypt_tools` and exposed in `__init__.py` if needed.
+---
+
+## 2026-01-29 - US-002
+- Refactored configuration loading into `wa_crypt_tools/config.py`.
+- Refactored venv management into `wa_crypt_tools/env_utils.py`.
+- Added `get_script_dir` to `wa_crypt_tools/utils.py`.
+- Verified with `tests/test_config_env.py` and linting tools.
+- Files changed: `wa_crypt_tools/config.py`, `wa_crypt_tools/env_utils.py`, `wa_crypt_tools/utils.py`, `tests/test_config_env.py`
+- **Learnings for future iterations:**
+  - `argparse.Namespace` mocks in tests need explicit `None` values for expected keys to match `argparse` behavior.
+  - Used `TypedDict` for `Config` to improve type safety across modules.
+---
