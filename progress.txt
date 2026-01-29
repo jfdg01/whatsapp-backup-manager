@@ -47,3 +47,28 @@
   - `replace_file_content` tool requires careful handling of indentation blocks like `try/except`.
   - When wrapping long lines in lists/function calls, ensure clean indentation to avoid fighting the linter.
 ---
+
+## 2026-01-29 - US-005
+- Implemented `wa_crypt_tools/commands/push.py` with `push_whatsapp` logic.
+- Created `tests/test_cmd_push.py` verifying push logic with mocked ADB.
+- Updated `wa_crypt_tools/commands/__init__.py` to export `push_whatsapp`.
+- Verified with `unittest`, `flake8`, and `mypy`.
+- Files changed: `wa_crypt_tools/commands/push.py`, `tests/test_cmd_push.py`, `wa_crypt_tools/commands/__init__.py`, `wa_crypt_tools/CLAUDE.md`.
+- **Learnings for future iterations:**
+  - `wa_tool.py` push logic is simple `adb push` to `/sdcard/Android/media/com.whatsapp`.
+  - `flake8` is very strict about line lengths (79 chars).
+  - Ensure `__init__.py` exports match the actual function names in modules.
+  - Using `unittest` + `mock` is robust for ADB commands without a real device.
+---
+
+## 2026-01-29 - US-006
+- Implemented `wa_crypt_tools/commands/decrypt.py` handling database decryption.
+- Created `tests/test_cmd_decrypt.py` verifying decryption logic with mocks.
+- Updated `wa_crypt_tools/commands/__init__.py` to export `decrypt_database`.
+- Verified with `unittest`, `flake8`, and `mypy` (in venv).
+- Files changed: `wa_crypt_tools/commands/decrypt.py`, `wa_crypt_tools/commands/__init__.py`, `tests/test_cmd_decrypt.py`
+- **Learnings for future iterations:**
+  - `flake8` forbids unused imports (e.g., `pathlib.Path`) even if typed.
+  - Strict line length (79 chars) requires careful wrapping.
+  - Venv python path `./wa-crypt-tools/bin/python` is essential for running `mypy`/`flake8` correctly.
+---

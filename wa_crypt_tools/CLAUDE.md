@@ -10,3 +10,6 @@
 - Uses `wa-crypt-tools` venv at project root.
 - Dependencies handled via `pip install`.
 - Testing uses `unittest` and `unittest.mock`.
+
+## Patterns
+- **Internal/External Command Pattern**: For commands needing specific deps (e.g., `vobject`), the public API should use `subprocess` to call the module with an `--internal` flag.
