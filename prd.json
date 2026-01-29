@@ -44,8 +44,8 @@
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Completed on 2026-01-29"
     },
     {
       "id": "US-004",
@@ -58,8 +58,8 @@
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Completed on 2026-01-29"
     },
     {
       "id": "US-005",

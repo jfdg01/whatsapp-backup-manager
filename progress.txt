@@ -2,6 +2,7 @@
 - Use `wa-crypt-tools` venv: `./wa-crypt-tools/bin/python`
 - Run tools via module: `python -m flake8`, `python -m mypy`
 - Package calls: `python -m wa_crypt_tools`
+- Use `unittest.mock` to simulate ADB for testing
 
 ## 2026-01-29 - US-001
 - Implemented `wa_crypt_tools` package structure.
@@ -24,4 +25,25 @@
 - **Learnings for future iterations:**
   - `argparse.Namespace` mocks in tests need explicit `None` values for expected keys to match `argparse` behavior.
   - Used `TypedDict` for `Config` to improve type safety across modules.
+---
+
+## 2026-01-29 - US-003
+- Implemented `wa_crypt_tools/adb.py` with `get_adb_base`, `list_devices`, `get_product_model`.
+- Added `AdbError` exception handling and typed functions.
+- Verified with `tests/test_adb.py` using `unittest.mock`.
+- Files changed: `wa_crypt_tools/adb.py`, `tests/test_adb.py`
+- **Learnings for future iterations:**
+  - `flake8` requires 2 blank lines before top-level functions/classes.
+  - Used `unittest.mock.patch` to avoid actual ADB calls during testing.
+---
+
+## 2026-01-29 - US-004
+- Implemented `wa_crypt_tools/commands/pull.py` encapsulating pull logic.
+- Created `tests/test_cmd_pull.py` with full mocking of ADB and subprocess calls.
+- Verified type safety with mypy and formatting with flake8.
+- Files changed: `wa_crypt_tools/commands/pull.py`, `wa_crypt_tools/commands/__init__.py`, `tests/test_cmd_pull.py`
+- **Learnings for future iterations:**
+  - `flake8` is strict about line length (79 chars) and blank line whitespace.
+  - `replace_file_content` tool requires careful handling of indentation blocks like `try/except`.
+  - When wrapping long lines in lists/function calls, ensure clean indentation to avoid fighting the linter.
 ---
