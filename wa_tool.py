@@ -94,6 +94,17 @@ def merge_args_with_config(args, config):
          print("Error: 'key' is required (via CLI or config.json).")
          sys.exit(1)
 
+    # 4. Resolve 'device' (generic)
+    if hasattr(args, 'device') and args.device is None:
+        args.device = config.get('device')
+
+    # 5. Resolve 'pull_device' and 'push_device'
+    if hasattr(args, 'pull_device') and args.pull_device is None:
+        args.pull_device = config.get('pull_device')
+        
+    if hasattr(args, 'push_device') and args.push_device is None:
+        args.push_device = config.get('push_device')
+
 
 def ensure_venv():
     """Ensures the virtual environment exists and has required packages."""
@@ -114,6 +125,26 @@ def ensure_venv():
     except subprocess.CalledProcessError:
         print("Warning: Failed to install dependencies in venv.")
         # We continue, as they might be there
+
+
+def get_adb_base(device_id=None):
+    """Returns the base adb command list, optionally with device serial."""
+    cmd = ["adb"]
+    if device_id:
+        cmd.extend(["-s", device_id])
+    return cmd
+
+def get_product_model(device_id):
+    """Attempts to get a descriptive product model for the device."""
+    try:
+        cmd = get_adb_base(device_id) + ["shell", "getprop", "ro.product.model"]
+        result = subprocess.check_output(cmd, stderr=subprocess.DEVNULL).decode('utf-8').strip()
+        if not result:
+            return "Unknown Model"
+        return result
+    except:
+        return "Unknown Model"
+
 
 
 # --- Subcommands ---
@@ -251,6 +282,44 @@ def cmd_internal_parse_vcf_entry(args):
         return 1
 
 
+def cmd_list_devices(args):
+    """Lists connected ADB devices with descriptive names."""
+    print("--- Connected ADB Devices ---")
+    try:
+        # We use 'adb devices -l' for parsing or just raw output
+        # But let's do a custom parse to be helpful as requested
+        output = subprocess.check_output(["adb", "devices", "-l"]).decode('utf-8')
+        lines = output.strip().split('\n')[1:] # Skip header
+        
+        found = False
+        for line in lines:
+            if not line.strip(): continue
+            parts = line.split()
+            device_id = parts[0]
+            state = parts[1]
+            
+            # Extract checks
+            extra_info = " ".join(parts[2:])
+            model = "Unknown"
+            
+            # Simple parsing of 'model:XYZ' from -l output
+            for chunk in parts:
+                if chunk.startswith("model:"):
+                    model = chunk.split(":")[1]
+            
+            print(f"Device ID: {device_id:<20} Model: {model:<20} State: {state}")
+            found = True
+            
+        if not found:
+            print("No devices found.")
+            
+        return 0
+    except subprocess.CalledProcessError:
+        print("Error: Failed to run adb commands.")
+        return 1
+
+
+
 @measure_time
 def cmd_pull(args):
     """Pulls WhatsApp data from a connected Android device."""
@@ -260,12 +329,17 @@ def cmd_pull(args):
     local_dest_base = args.output 
     dest_dir = os.path.join(local_dest_base, "WhatsApp")
     
+    device_id = getattr(args, 'device', None)
+    adb_base = get_adb_base(device_id)
+
     print(f"Output Directory: {local_dest_base}")
+    if device_id:
+        print(f"Target Device: {device_id}")
 
     # 1. Check ADB
     print("[1/5] Checking ADB connection...")
     try:
-        subprocess.check_call(["adb", "get-state"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.check_call(adb_base + ["get-state"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     except subprocess.CalledProcessError:
         print("Error: No device connected via ADB. Please connect your phone and enable USB debugging.")
         return 1
@@ -285,7 +359,7 @@ def cmd_pull(args):
     for path in contacts_paths:
         try:
             # Check file existence via shell
-            subprocess.check_call(["adb", "shell", f"[ -f {path} ]"])
+            subprocess.check_call(adb_base + ["shell", f"[ -f {path} ]"])
             found_contact = path
             break
         except subprocess.CalledProcessError:
@@ -294,7 +368,7 @@ def cmd_pull(args):
     if found_contact:
         print(f"Found contacts at: {found_contact}")
         # Output contacts directly to base output dir
-        subprocess.check_call(["adb", "pull", found_contact, os.path.join(local_dest_base, "contacts.vcf")])
+        subprocess.check_call(adb_base + ["pull", found_contact, os.path.join(local_dest_base, "contacts.vcf")])
         print("Contacts pulled successfully.")
     else:
         print("Warning: contacts.vcf not found in standard paths.")
@@ -304,7 +378,7 @@ def cmd_pull(args):
     print("[3/5] Locating WhatsApp folder...")
     base_path = "/sdcard/Android/media/com.whatsapp/WhatsApp"
     try:
-         subprocess.check_call(["adb", "shell", f"[ -d {base_path} ]"])
+         subprocess.check_call(adb_base + ["shell", f"[ -d {base_path} ]"])
          print(f"Found WhatsApp folder at: {base_path}")
     except subprocess.CalledProcessError:
          print(f"Error: WhatsApp folder not found at {base_path}")
@@ -317,7 +391,7 @@ def cmd_pull(args):
     # msgstore
     target_msgstore = "msgstore.db.crypt15"
     try:
-        subprocess.check_call(["adb", "pull", f"{base_path}/Databases/{target_msgstore}", os.path.join(dest_dir, "Databases/")], stderr=subprocess.DEVNULL)
+        subprocess.check_call(adb_base + ["pull", f"{base_path}/Databases/{target_msgstore}", os.path.join(dest_dir, "Databases/")], stderr=subprocess.DEVNULL)
         print(f"Pulled {target_msgstore}")
     except subprocess.CalledProcessError:
         print(f"Warning: {target_msgstore} not found in Databases.")
@@ -326,24 +400,24 @@ def cmd_pull(args):
     target_wadb = "wa.db.crypt15"
     # Try Databases folder first
     try:
-        subprocess.check_call(["adb", "pull", f"{base_path}/Databases/{target_wadb}", os.path.join(dest_dir, "Databases/")], stderr=subprocess.DEVNULL)
+        subprocess.check_call(adb_base + ["pull", f"{base_path}/Databases/{target_wadb}", os.path.join(dest_dir, "Databases/")], stderr=subprocess.DEVNULL)
         print(f"Pulled {target_wadb}")
     except subprocess.CalledProcessError:
         # Try Backups folder if not in Databases (sometimes it's there per user)
         try:
-             subprocess.check_call(["adb", "pull", f"{base_path}/Backups/{target_wadb}", os.path.join(dest_dir, "Databases/")], stderr=subprocess.DEVNULL)
+             subprocess.check_call(adb_base + ["pull", f"{base_path}/Backups/{target_wadb}", os.path.join(dest_dir, "Databases/")], stderr=subprocess.DEVNULL)
              print(f"Pulled {target_wadb} (from Backups)")
         except subprocess.CalledProcessError:
              print(f"Warning: {target_wadb} not found in Databases or Backups.")
 
     # 5. Pull Backups
     print("[5/6] Pulling Backups folder...")
-    subprocess.check_call(["adb", "pull", f"{base_path}/Backups", dest_dir])
+    subprocess.check_call(adb_base + ["pull", f"{base_path}/Backups", dest_dir])
 
     # 6. Pull Media
     print("[6/6] Pulling Media folder...")
     media_path = f"{base_path}/Media"
-    subprocess.check_call(["adb", "pull", media_path, dest_dir])
+    subprocess.check_call(adb_base + ["pull", media_path, dest_dir])
     
     print("----------------------------")
     print(f"Success! WhatsApp data pulled to: {dest_dir}")
@@ -438,10 +512,16 @@ def cmd_push(args):
 
     print(f"Source: {local_wa}")
 
+    device_id = getattr(args, 'device', None)
+    adb_base = get_adb_base(device_id)
+    
+    if device_id:
+        print(f"Target Device: {device_id}")
+
     # 2. Check ADB
     print("[1/3] Checking ADB connection...")
     try:
-        subprocess.check_call(["adb", "get-state"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.check_call(adb_base + ["get-state"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     except subprocess.CalledProcessError:
         print("Error: No device connected via ADB. Please connect your phone and enable USB debugging.")
         return 1
@@ -456,7 +536,7 @@ def cmd_push(args):
     # Check if target base exists, if not create it
     print("[2/3] Preparing target directory...")
     try:
-        subprocess.check_call(["adb", "shell", f"mkdir -p {target_base}"])
+        subprocess.check_call(adb_base + ["shell", f"mkdir -p {target_base}"])
     except subprocess.CalledProcessError:
         print(f"Error: Could not create target directory {target_base}")
         return 1
@@ -464,7 +544,7 @@ def cmd_push(args):
     # 4. Push
     print(f"[3/3] Pushing files... (This may take a while)")
     try:
-        subprocess.check_call(["adb", "push", local_wa, target_base])
+        subprocess.check_call(adb_base + ["push", local_wa, target_base])
         print("Push completed successfully.")
     except subprocess.CalledProcessError:
         print("Error during push.")
@@ -485,10 +565,13 @@ def cmd_all(args):
     """Orchestrates pull and decrypt."""
     print("=== Auto-WhatsApp Orchestrator ===")
     
+    if args.pull_device and args.push_device and args.pull_device == args.push_device:
+        print("Warning: Pull and Push devices are the same. This implies a backup and restore on the same device.")
+        
     # Pull
     print("\n>>> Running Pull...")
     # args.output is already resolved
-    pull_args = argparse.Namespace(output=args.output)
+    pull_args = argparse.Namespace(output=args.output, device=args.pull_device)
     if cmd_pull(pull_args) != 0:
         print("Pull failed.")
         return 1
@@ -515,6 +598,17 @@ def cmd_all(args):
             return 1
     else:
         print("contacts.vcf not found, skipping conversion.")
+        
+    # Push
+    print("\n>>> Running Push...")
+    
+    # We push from the output directory (which was the pull destination)
+    # The push command expects 'input' as the directory containing 'WhatsApp'
+    # logical mapping: Pull Output matches Push Input because we are syncing
+    push_args = argparse.Namespace(input=args.output, device=args.push_device)
+    if cmd_push(push_args) != 0:
+        print("Push failed.")
+        return 1
 
     print("\n=== All Done ===")
     return 0
@@ -533,6 +627,7 @@ def main():
     # Pull Command
     p_pull = subparsers.add_parser("pull", help="Pull WhatsApp data from Android", parents=[config_parser])
     p_pull.add_argument("--output", "-o", help="Base download directory (default: ./output)", default=None)
+    p_pull.add_argument("--device", "-d", help="Specific device ID (serial)", default=None)
 
     # Decrypt Command
     p_decrypt = subparsers.add_parser("decrypt", help="Decrypt WhatsApp database", parents=[config_parser])
@@ -542,11 +637,17 @@ def main():
     # Push Command
     p_push = subparsers.add_parser("push", help="Push WhatsApp data to Android", parents=[config_parser])
     p_push.add_argument("--input", "-i", help="Base input directory containing WhatsApp folder (default: ./output)", default=None)
+    p_push.add_argument("--device", "-d", help="Specific device ID (serial)", default=None)
 
     # All Command
-    p_all = subparsers.add_parser("all", help="Pull and Decrypt sequence", parents=[config_parser])
+    p_all = subparsers.add_parser("all", help="Pull, Decrypt, and Push sequence", parents=[config_parser])
     p_all.add_argument("key", help="64-digit hex key", nargs='?', default=None)
     p_all.add_argument("--output", "-o", help="Base directory for operations (default: ./output)", default=None)
+    p_all.add_argument("--pull-device", help="Source device ID for pull", default=None)
+    p_all.add_argument("--push-device", help="Destination device ID for push", default=None)
+    
+    # List Devices Command
+    p_list = subparsers.add_parser("list-devices", help="List connected devices", parents=[config_parser])
 
     # Convert VCF Command
     p_convert = subparsers.add_parser("convert-vcf", help="Convert VCF to JSON", parents=[config_parser])
@@ -575,6 +676,8 @@ def main():
         sys.exit(cmd_all(args))
     elif args.command == "convert-vcf":
         sys.exit(cmd_convert_vcf(args))
+    elif args.command == "list-devices":
+        sys.exit(cmd_list_devices(args))
     elif args.command == "_internal_parse_vcf":
         sys.exit(cmd_internal_parse_vcf_entry(args))
 
