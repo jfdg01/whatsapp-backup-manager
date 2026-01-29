@@ -1,0 +1,120 @@
+{
+  "project": "whatsapp-backup-manager",
+  "branchName": "ralph/refactor-wa-tool",
+  "description": "Refactor the monolithic wa_tool.py script into a structured, maintainable Python package (wa_crypt_tools).",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Establish Package Structure",
+      "description": "As a developer, I want a standard Python package structure to organize the code logic.",
+      "acceptanceCriteria": [
+        "Create wa_crypt_tools/ directory with __init__.py",
+        "Create wa_crypt_tools/__main__.py entry point",
+        "Define main empty modules (config, adb, crypto, utils)",
+        "Linting setup (mypy/flake8 compliant)",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Refactor Configuration & Environment",
+      "description": "As a user, I want the tool to automatically handle config loading and venv creation seamlessly.",
+      "acceptanceCriteria": [
+        "Isolate configuration logic into config.py (TypedDict/Pydantic)",
+        "Move ensure_venv and related venv management to env_utils.py",
+        "Ensure config can be loaded from JSON or CLI args",
+        "Verify: Tool detects missing venv and rebuilds it",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Core ADB & Device Management",
+      "description": "As a user, I want reliable device detection with error messages when devices are missing.",
+      "acceptanceCriteria": [
+        "Isolate ADB wrappers into adb.py",
+        "Typed functions for get_adb_base, list_devices",
+        "Add exception handling for ADB failures (e.g., unauthorized)",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Modularize Pull Command",
+      "description": "As a developer, I want the pull logic in its own module.",
+      "acceptanceCriteria": [
+        "Create commands/pull.py handling adb pull logic",
+        "Ensure it handles large transfers correctly",
+        "Verify command runs independently via main CLI",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Modularize Push Command",
+      "description": "As a developer, I want the push logic in its own module.",
+      "acceptanceCriteria": [
+        "Create commands/push.py handling adb push logic",
+        "Include shallow push support if present",
+        "Verify command runs independently via main CLI",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Modularize Decrypt Command",
+      "description": "As a developer, I want the decrypt logic in its own module.",
+      "acceptanceCriteria": [
+        "Create commands/decrypt.py handling database decryption",
+        "Call venv scripts if needed",
+        "Verify command runs independently via main CLI",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "Modularize Convert Command",
+      "description": "As a developer, I want the VCF convert logic in its own module.",
+      "acceptanceCriteria": [
+        "Create commands/convert.py handling VCF conversion",
+        "Verify command runs independently via main CLI",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "Orchestrator Mode",
+      "description": "As a user, I want the all command to coordinate the other modules efficiently.",
+      "acceptanceCriteria": [
+        "Create commands/orchestrator.py",
+        "Re-implement cmd_all logic by importing other command modules",
+        "Maintain the workflow: Pull -> Decrypt -> Convert",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}
