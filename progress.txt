@@ -3,6 +3,7 @@
 - Run tools via module: `python -m flake8`, `python -m mypy`
 - Package calls: `python -m wa_crypt_tools`
 - Use `unittest.mock` to simulate ADB for testing
+- Use `--internal` flag pattern for commands needing venv/specific deps (public API calls subprocess)
 
 ## 2026-01-29 - US-001
 - Implemented `wa_crypt_tools` package structure.
@@ -71,4 +72,31 @@
   - `flake8` forbids unused imports (e.g., `pathlib.Path`) even if typed.
   - Strict line length (79 chars) requires careful wrapping.
   - Venv python path `./wa-crypt-tools/bin/python` is essential for running `mypy`/`flake8` correctly.
+---
+
+## 2026-01-29 - US-007
+- Implemented `wa_crypt_tools/commands/convert.py` handling VCF conversion.
+- Used internal/external pattern: Public `convert_vcf` calls `subprocess` to run module with `--internal`.
+- Tested with `tests/test_cmd_convert.py` mocking subprocess calls.
+- Updated `wa_crypt_tools/commands/__init__.py` to export `convert_vcf`.
+- Documented pattern in `CLAUDE.md`.
+- Verified with `mypy` and `flake8` (fixed issues).
+- Files changed: `wa_crypt_tools/commands/convert.py`, `tests/test_cmd_convert.py`, `wa_crypt_tools/commands/__init__.py`, `wa_crypt_tools/CLAUDE.md`
+- **Learnings for future iterations:**
+  - `flake8` requires careful line wrapping (79 chars).
+  - Used `--internal` flag to execute logic inside the venv from the main script.
+  - `mypy` redundant ignores can be an issue if configuration changes.
+---
+
+## 2026-01-29 - US-008
+- Implemented `wa_crypt_tools/commands/orchestrator.py` to coordinate pull, decrypt, and convert.
+- Updated `wa_crypt_tools/__main__.py` to expose `all` subcommand and fix dispatch logic.
+- Updated `wa_crypt_tools/commands/__init__.py`.
+- Created `tests/test_cmd_orchestrator.py` with full mocking.
+- Verified with `unittest`, `flake8`, and `mypy` (fixed multiple line-length and type issues).
+- Files changed: `wa_crypt_tools/commands/orchestrator.py`, `wa_crypt_tools/__main__.py`, `wa_crypt_tools/commands/__init__.py`, `tests/test_cmd_orchestrator.py`, `wa_crypt_tools/CLAUDE.md`
+- **Learnings for future iterations:**
+  - `flake8` is extremely strict about line lengths (79 chars) and whitespace in `__main__.py` style dispatchers.
+  - Mixing `argparse` namespace attributes with `TypedDict` (`Config`) requires explicit casting or careful handling for mypy.
+  - `replace_file_content` can be dangerous with large replacement blocks if not precise; full file rewrite is safer for critical entry points when refactoring heavily.
 ---

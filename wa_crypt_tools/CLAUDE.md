@@ -5,6 +5,7 @@
 - **Typecheck**: `./wa-crypt-tools/bin/python -m mypy wa_crypt_tools`
 - **Test**: `./wa-crypt-tools/bin/python -m unittest discover tests`
 - **Run**: `./wa-crypt-tools/bin/python -m wa_crypt_tools`
+- **Orchestrate**: `./wa-crypt-tools/bin/python -m wa_crypt_tools all`
 
 ## Environment
 - Uses `wa-crypt-tools` venv at project root.
