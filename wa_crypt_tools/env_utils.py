@@ -32,7 +32,7 @@ def ensure_venv(base_dir: Optional[str] = None) -> None:
     # Check if we need to install/update (naive check: just run install)
     # Silence output unless error
     try:
-        pkgs = ["vobject", "mypy", "flake8"]
+        pkgs = ["wa-crypt-tools", "vobject", "mypy", "flake8"]
         subprocess.check_call(
             [pip_path, "install"] + pkgs,
             stdout=subprocess.DEVNULL,
