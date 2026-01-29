@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wa-crypt-tools"
+version = "0.1.0"
+description = "Tools for managing and decrypting WhatsApp backups"
+authors = [
+    {name = "User", email = "user@example.com"},
+]
+dependencies = []
+requires-python = ">=3.8"
+
+[tool.mypy]
+files = ["wa_crypt_tools"]
+ignore_missing_imports = true
+strict_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+disallow_any_generics = true
+check_untyped_defs = true
+disallow_untyped_defs = true
+
+[tool.flake8]
+max-line-length = 120
+exclude = [
+    ".git",
+    "__pycache__",
+    "build",
+    "dist",
+    "venv",
+    ".venv",
+]
+ignore = ["E203", "W503"]
